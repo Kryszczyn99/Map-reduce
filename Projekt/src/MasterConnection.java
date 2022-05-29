@@ -1,11 +1,9 @@
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-
+import java.util.*;
 
 
 public class MasterConnection implements Runnable {
@@ -55,6 +53,11 @@ public class MasterConnection implements Runnable {
                     String fileData = getTextFromFile(path_to_get_job);
                     mapFunction(path_to_get_job,fileData);
                 }
+                else if (parts[0].equals("[REDUCE]") && parts.length > 1) {
+                    System.out.println("\n[Worker] Got a reduce function from master.");
+                    String fileData = getTextFromFile(path_to_get_job);
+                    reduceFunction(path_to_get_job,fileData);
+                }
                 else {
                     System.out.println("\n[Worker] Got a notification from server: " + serverResponse);
                 }
@@ -71,25 +74,45 @@ public class MasterConnection implements Runnable {
         }
     }
     public void mapFunction(String k,String v) throws IOException {
-        HashMap<String, ArrayList<String>> mapDatas = new HashMap<String, ArrayList<String>>();
+
+        HashMap<String, String> mapDatas = new HashMap<String, String>();
         String[] splittedWords = v.split("[^A-Za-z0-9]+");
-        for(String word:splittedWords) {
-            if (mapDatas.containsKey(word)) {
-                mapDatas.get(word).add("1");
-            } else {
-                mapDatas.put(word, new ArrayList<String>(Arrays.asList("1")));
-            }
-        }
-        System.out.println(mapDatas);
-        JSONObject json = new JSONObject(mapDatas);
-        System.out.println(json);
+
         File f = new File(path_for_result_after_job);
         if(!f.exists()) {
             f.createNewFile();
         }
         BufferedWriter writer = new BufferedWriter(new FileWriter(path_for_result_after_job));
+
+        for(String word:splittedWords) {
+            mapDatas.put(word, "1");
+            JSONObject json = new JSONObject(mapDatas);
+            writer.write(json.toString());
+            writer.write("\n");
+            mapDatas.clear();
+        }
+
+        writer.close();
+    }
+    public void reduceFunction(String k, String v) throws IOException {
+        HashMap<String, String> mapDatas = new HashMap<String, String>();
+        JSONObject jObject  = new JSONObject(v);
+        Iterator<String> keys= jObject.keys();
+        while (keys.hasNext())
+        {
+            int count = 0;
+            String keyValue = (String)keys.next();
+            JSONArray datas = jObject.getJSONArray(keyValue);
+            for(int i = 0; i < datas.length(); i++){
+                count += Integer.parseInt(datas.getString(i));
+            }
+            mapDatas.put(keyValue,String.valueOf(count));
+        }
+        BufferedWriter writer = new BufferedWriter(new FileWriter(path_for_result_after_job));
+        JSONObject json = new JSONObject(mapDatas);
         writer.write(json.toString());
         writer.close();
+        System.out.println(mapDatas);
     }
     public String getTextFromFile(String path) throws IOException {
         File file = new File(path);
