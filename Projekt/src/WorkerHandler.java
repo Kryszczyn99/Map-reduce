@@ -33,7 +33,7 @@ public class WorkerHandler implements Runnable {
                 {
                     PrintWriter out = new PrintWriter(client.getOutputStream(), true);
                     out.println(request);
-                    System.out.println("\n[Server] Request sent !");
+                    System.out.println("\n[Server] Request sent ! (" + request + ")");
                 }
             }
         } catch (IOException e) {
